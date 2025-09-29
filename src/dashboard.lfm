@@ -1,0 +1,169 @@
+object DashboardForm: TDashboardForm
+  Left = 0
+  Height = 206
+  Top = 0
+  Width = 320
+  BorderStyle = bsDialog
+  Caption = 'TTSG'
+  ClientHeight = 206
+  ClientWidth = 320
+  Position = poDesktopCenter
+  ShowInTaskBar = stAlways
+  LCLVersion = '4.2.0.0'
+  object Panel1: TPanel
+    AnchorSideLeft.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    Left = 10
+    Height = 25
+    Top = 171
+    Width = 300
+    Align = alBottom
+    BorderSpacing.Around = 10
+    BevelOuter = bvNone
+    Caption = 'TTSG'
+    ClientHeight = 25
+    ClientWidth = 300
+    TabOrder = 0
+    object ButtonOK: TButton
+      AnchorSideTop.Control = Panel1
+      AnchorSideRight.Control = ButtonCancel
+      AnchorSideBottom.Control = Panel1
+      AnchorSideBottom.Side = asrBottom
+      Left = 130
+      Height = 25
+      Top = 0
+      Width = 80
+      Anchors = [akTop, akRight, akBottom]
+      BorderSpacing.Right = 10
+      Caption = 'OK'
+      Constraints.MinWidth = 80
+      Default = True
+      TabOrder = 0
+      OnClick = ButtonOKClick
+    end
+    object ButtonCancel: TButton
+      AnchorSideTop.Control = Panel1
+      AnchorSideRight.Control = Panel1
+      AnchorSideRight.Side = asrBottom
+      AnchorSideBottom.Control = Panel1
+      AnchorSideBottom.Side = asrBottom
+      Left = 220
+      Height = 25
+      Top = 0
+      Width = 80
+      Anchors = [akTop, akRight, akBottom]
+      AutoSize = True
+      Cancel = True
+      Caption = 'Cancel'
+      Constraints.MinWidth = 80
+      TabOrder = 1
+      OnClick = ButtonCancelClick
+    end
+  end
+  object Label1: TLabel
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    Left = 10
+    Height = 17
+    Top = 10
+    Width = 112
+    BorderSpacing.Around = 10
+    Caption = 'Startup time range:'
+  end
+  object Label2: TLabel
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = StartTimeEdit
+    AnchorSideTop.Side = asrCenter
+    Left = 10
+    Height = 17
+    Top = 41
+    Width = 30
+    BorderSpacing.Left = 10
+    Caption = 'From'
+  end
+  object StartTimeEdit: TTimeEdit
+    AnchorSideLeft.Control = Label2
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = Label1
+    AnchorSideTop.Side = asrBottom
+    Left = 50
+    Height = 25
+    Top = 37
+    Width = 80
+    ButtonWidth = 23
+    BorderSpacing.Left = 10
+    NumGlyphs = 1
+    Flat = True
+    MaxLength = 0
+    TabOrder = 1
+  end
+  object Label3: TLabel
+    AnchorSideLeft.Control = StartTimeEdit
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = Label2
+    Left = 135
+    Height = 17
+    Top = 41
+    Width = 15
+    BorderSpacing.Left = 5
+    Caption = 'To'
+  end
+  object EndTimeEdit: TTimeEdit
+    AnchorSideLeft.Control = Label3
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = StartTimeEdit
+    Left = 155
+    Height = 25
+    Top = 37
+    Width = 80
+    ButtonWidth = 23
+    BorderSpacing.Left = 5
+    NumGlyphs = 1
+    Flat = True
+    MaxLength = 0
+    TabOrder = 2
+  end
+  object Label4: TLabel
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = DurationEdit
+    AnchorSideTop.Side = asrCenter
+    Left = 10
+    Height = 17
+    Top = 86
+    Width = 53
+    BorderSpacing.Left = 10
+    BorderSpacing.Top = 20
+    Caption = 'Duration:'
+  end
+  object DurationEdit: TTimeEdit
+    AnchorSideLeft.Control = Label4
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = StartTimeEdit
+    AnchorSideTop.Side = asrBottom
+    Left = 73
+    Height = 25
+    Top = 82
+    Width = 100
+    ButtonWidth = 23
+    BorderSpacing.Left = 10
+    BorderSpacing.Top = 20
+    NumGlyphs = 1
+    MaxLength = 0
+    TabOrder = 3
+  end
+  object CheckBoxAutorun: TCheckBox
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = DurationEdit
+    AnchorSideTop.Side = asrBottom
+    Left = 10
+    Height = 21
+    Top = 127
+    Width = 168
+    BorderSpacing.Left = 10
+    BorderSpacing.Top = 20
+    Caption = 'Autorun at system startup'
+    TabOrder = 4
+  end
+end

@@ -1,0 +1,58 @@
+object CountdownForm: TCountdownForm
+  Left = 0
+  Height = 70
+  Top = 0
+  Width = 320
+  Anchors = []
+  AutoSize = True
+  BorderIcons = []
+  BorderStyle = bsNone
+  ClientHeight = 70
+  ClientWidth = 320
+  DefaultMonitor = dmPrimary
+  Position = poDefault
+  ShowInTaskBar = stNever
+  Visible = True
+  OnClose = FormClose
+  OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
+  OnShow = FormShow
+  object TTSGLabel: TLabel
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Left = 10
+    Height = 50
+    Top = 10
+    Width = 130
+    Anchors = [akTop, akLeft, akBottom]
+    BorderSpacing.Left = 10
+    BorderSpacing.Top = 10
+    BorderSpacing.Bottom = 10
+    Caption = 'TTSG'
+    Font.Color = clWhite
+    Font.Height = -50
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object CountdownLabel: TLabel
+    AnchorSideLeft.Control = TTSGLabel
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = TTSGLabel
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    Left = 150
+    Height = 66
+    Top = 10
+    Width = 160
+    Anchors = [akTop, akLeft, akRight]
+    BorderSpacing.Left = 10
+    BorderSpacing.Right = 10
+    Caption = '--:--'
+    Font.Color = clWhite
+    Font.Height = -50
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+end
