@@ -31,11 +31,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up MinGW (winlibs)
+      - name: Set up MinGW
         if: matrix.toolchain == 'mingw'
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
+        shell: pwsh
+        run: |
+          # windows-latest images ship MinGW-w64 (GCC) preinstalled; make
+          # sure it is on PATH for this and the following steps.
+          if (Get-Command g++ -ErrorAction SilentlyContinue) {
+              $gxx = (Get-Command g++).Source
+          } elseif (Test-Path 'C:\mingw64\bin\g++.exe') {
+              'C:\mingw64\bin' | Out-File -Append -Encoding ascii $env:GITHUB_PATH
+              $gxx = 'C:\mingw64\bin\g++.exe'
+          } else {
+              throw 'MinGW-w64 (g++) not found on the runner'
+          }
+          Write-Host "Using $gxx"
 
       - name: Version from tag
         shell: bash
