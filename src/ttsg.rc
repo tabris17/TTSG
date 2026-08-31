@@ -1,0 +1,9 @@
+// TTSG resources - binary only, no localized text (keeps rc.exe and windres happy)
+#include <windows.h>
+#include "resource.h"
+
+IDI_TTSG ICON "../assets/ttsg.ico"
+
+TTSG_FONT RCDATA "../assets/font.otf"
+
+1 24 "app.manifest"
