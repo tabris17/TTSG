@@ -1,6 +1,20 @@
 cmake_minimum_required(VERSION 3.20)
 project(ttsg LANGUAGES CXX)
 
+# Version of the executable. CI overrides this with the git tag on release:
+#   cmake -DTTSG_VERSION=0.1.1 ...
+if(NOT DEFINED TTSG_VERSION)
+    set(TTSG_VERSION "0.0.0")
+endif()
+if(NOT TTSG_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
+    message(FATAL_ERROR
+        "TTSG_VERSION must be MAJOR.MINOR.PATCH, got: \"${TTSG_VERSION}\"")
+endif()
+set(TTSG_VERSION_MAJOR ${CMAKE_MATCH_1})
+set(TTSG_VERSION_MINOR ${CMAKE_MATCH_2})
+set(TTSG_VERSION_PATCH ${CMAKE_MATCH_3})
+configure_file(src/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/version.h @ONLY)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -21,6 +35,9 @@ target_compile_definitions(ttsg PRIVATE
     WIN32_LEAN_AND_MEAN
     _WIN32_WINNT=0x0A00
 )
+
+# Generated version.h (included by ttsg.rc for the VERSIONINFO resource).
+target_include_directories(ttsg PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(ttsg PRIVATE
     user32

@@ -1,9 +1,42 @@
 // TTSG resources - binary only, no localized text (keeps rc.exe and windres happy)
 #include <windows.h>
 #include "resource.h"
+#include "version.h"
 
 IDI_TTSG ICON "../assets/ttsg.ico"
 
 TTSG_FONT RCDATA "../assets/font.otf"
 
 1 24 "app.manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     TTSG_VERSION_MAJOR, TTSG_VERSION_MINOR, TTSG_VERSION_PATCH, 0
+PRODUCTVERSION  TTSG_VERSION_MAJOR, TTSG_VERSION_MINOR, TTSG_VERSION_PATCH, 0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+FILEFLAGS       VS_FF_DEBUG
+#else
+FILEFLAGS       0
+#endif
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        // English (US), Unicode
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "TTSG - Time to say goodbye\0"
+            VALUE "FileVersion",     TTSG_VERSION_STRING "\0"
+            VALUE "InternalName",    "ttsg.exe\0"
+            VALUE "OriginalFilename","ttsg.exe\0"
+            VALUE "ProductName",     "TTSG\0"
+            VALUE "ProductVersion",  TTSG_VERSION_STRING "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
