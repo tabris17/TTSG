@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "alert.h"
 #include "bootlog.h"
 #include "resource.h"
 #include "settingsdlg.h"
@@ -212,7 +213,7 @@ void App::OnTick()
         if (rem <= 0 && !notified_) {
             notified_ = true;
             MessageBeep(MB_ICONINFORMATION);
-            MessageBoxW(hwndMain_, str::kGoodbyeMsg, str::kAppName, MB_OK | MB_ICONINFORMATION);
+            ShowGoodbyeAlert(inst_);
         }
     }
     // Self-heal: recreates the window after explorer restart / desktop refresh.

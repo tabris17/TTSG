@@ -8,6 +8,8 @@ inline constexpr wchar_t kMutexName[]      = L"Local\\TTSG_Instance";
 inline constexpr wchar_t kMainClass[]      = L"TTSG_Main";
 inline constexpr wchar_t kCountdownClass[] = L"TTSG_Countdown";
 inline constexpr wchar_t kSettingsClass[]  = L"TTSG_Settings";
+inline constexpr wchar_t kAlertMaskClass[] = L"TTSG_AlertMask";
+inline constexpr wchar_t kAlertClass[]     = L"TTSG_Alert";
 inline constexpr wchar_t kFontFamily[]     = L"TTSG";
 
 // registry

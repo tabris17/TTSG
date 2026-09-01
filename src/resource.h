@@ -20,9 +20,13 @@
 #define IDC_CANCEL          308
 #define IDC_RESET           309
 
+// ---- goodbye alert controls ----
+#define IDC_ALERT_OK        310
+
 // ---- timers ----
 #define IDT_TICK            1
 #define IDT_DLG             2
+#define IDT_ALERT           3
 
 // ---- app messages ----
 #define WM_APP_TRAY         (WM_APP + 1)

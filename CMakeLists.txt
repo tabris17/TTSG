@@ -20,6 +20,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(ttsg WIN32
     src/main.cpp
+    src/alert.cpp
     src/app.cpp
     src/bootlog.cpp
     src/countdown.cpp
