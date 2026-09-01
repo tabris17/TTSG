@@ -19,6 +19,7 @@ constexpr int kTimeLeft = 150;
 constexpr COLORREF kColorWhite = RGB(255, 255, 255);
 constexpr COLORREF kColorYellow = RGB(255, 215, 0);
 constexpr COLORREF kColorRed = RGB(255, 0, 0);
+constexpr COLORREF kColorPurple = RGB(191, 0, 255);
 constexpr COLORREF kColorKey = RGB(0, 0, 0);
 
 // mm:ss is used instead of hh:mm for the last hour before the deadline and
@@ -263,14 +264,16 @@ LRESULT CountdownWindow::HandleMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp
             wcsncpy(buf, str::kNoTime, 16);
             buf[15] = L'\0';
         } else if (remainingSeconds_ < 0) {
-            // Overtime past the deadline: negative red time, -MM:SS within the
-            // first hour, -HH:MM beyond.
+            // Overtime past the deadline: negative time, red -MM:SS within the
+            // first hour, purple -HH:MM beyond (so long overtime stands out).
             const long long s = -remainingSeconds_;
-            color = kColorRed;
-            if (s > kLastHourSeconds)
+            if (s > kLastHourSeconds) {
+                color = kColorPurple;
                 swprintf(buf, 16, L"-%02lld:%02lld", s / 3600, (s % 3600) / 60);
-            else
+            } else {
+                color = kColorRed;
                 swprintf(buf, 16, L"-%02lld:%02lld", s / 60, s % 60);
+            }
         } else if (remainingSeconds_ > kLastHourSeconds) {
             const long long s = remainingSeconds_;
             swprintf(buf, 16, L"%02lld:%02lld", s / 3600, (s % 3600) / 60);

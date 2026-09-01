@@ -32,8 +32,8 @@ public:
     bool IsShown() const { return hwnd_ && IsWindow(hwnd_) && IsWindowVisible(hwnd_); }
 
     // Seconds until the deadline. Negative values mean overtime past the
-    // deadline and are drawn as negative red time (mm:ss within the first
-    // hour, hh:mm beyond). kNoRemaining means "no boot time" -> "--:--".
+    // deadline and are drawn as negative time: red mm:ss within the first
+    // hour, purple hh:mm beyond. kNoRemaining means "no boot time" -> "--:--".
     void SetRemaining(long long seconds);
     // Move back to the bottom-right corner of the primary work area.
     void Reposition();
