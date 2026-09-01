@@ -15,6 +15,9 @@ public:
     // Sentinel for SetRemaining(): no boot time was found -> "--:--".
     static constexpr long long kNoRemaining = LLONG_MIN;
 
+    // Default background color (dark gray, keeps the white title readable).
+    static constexpr COLORREF kDefaultBgColor = RGB(45, 45, 48);
+
     void Init(HINSTANCE inst, HWND owner);
 
     // Whether a boot time was found; when false the widget is destroyed.
@@ -35,6 +38,9 @@ public:
     // deadline and are drawn as negative time: red mm:ss within the first
     // hour, purple hh:mm beyond. kNoRemaining means "no boot time" -> "--:--".
     void SetRemaining(long long seconds);
+    // Rounded background plate: disabled = transparent (color-keyed), enabled
+    // = filled with `color`. Recreates the window when the color key changes.
+    void SetBackground(bool enabled, COLORREF color);
     // Move back to the bottom-right corner of the primary work area.
     void Reposition();
 
@@ -45,6 +51,8 @@ private:
     LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
     void CreateFontIfNeeded();
     void Destroy();
+    // Transparent color key; avoids colliding with the background fill color.
+    COLORREF EffectiveColorKey() const;
 
     HINSTANCE inst_ = nullptr;
     HWND owner_ = nullptr;   // controller window, receives WM_APP_COUNT_CLOSED
@@ -53,6 +61,8 @@ private:
     bool classRegistered_ = false;
     bool enabled_ = false;
     bool wantShown_ = true;
+    bool bgEnabled_ = false;
+    COLORREF bgColor_ = kDefaultBgColor;
     long long remainingSeconds_ = kNoRemaining;
     int width_ = 0, height_ = 0;
 };

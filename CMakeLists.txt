@@ -45,6 +45,7 @@ target_link_libraries(ttsg PRIVATE
     gdi32
     shell32
     comctl32
+    comdlg32
     advapi32
 )
 

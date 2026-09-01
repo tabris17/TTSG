@@ -15,12 +15,24 @@ constexpr int kLogicalHeight = 70;
 constexpr int kLogicalFontHeight = 50;
 constexpr int kMargin = 10;
 constexpr int kTimeLeft = 150;
+constexpr int kCornerRadius = 10;
+constexpr int kLogicalGap = 10; // gap to the work area's right/bottom edges
 
 constexpr COLORREF kColorWhite = RGB(255, 255, 255);
+constexpr COLORREF kColorBlack = RGB(0, 0, 0);
 constexpr COLORREF kColorYellow = RGB(255, 215, 0);
+constexpr COLORREF kColorAmber = RGB(180, 140, 0); // yellow on light backgrounds
 constexpr COLORREF kColorRed = RGB(255, 0, 0);
 constexpr COLORREF kColorPurple = RGB(191, 0, 255);
 constexpr COLORREF kColorKey = RGB(0, 0, 0);
+constexpr COLORREF kColorKeyAlt = RGB(0, 0, 1); // used when the background itself is black
+
+// Light/dark test for adapting text color to the chosen background plate.
+bool IsLightColor(COLORREF c)
+{
+    const int luminance = (299 * GetRValue(c) + 587 * GetGValue(c) + 114 * GetBValue(c)) / 1000;
+    return luminance > 160;
+}
 
 // mm:ss is used instead of hh:mm for the last hour before the deadline and
 // the first hour of overtime.
@@ -94,6 +106,19 @@ bool GetPrimaryMonitorRects(RECT& work, RECT& monitor)
     return true;
 }
 
+// Bottom-right of the primary work area, inset by a small gap. Child
+// coordinates are relative to the desktop host, whose origin is the virtual
+// screen's top-left (NOT the primary monitor's when another monitor sits
+// left/above it), while the work rect is in virtual-screen coords.
+POINT BottomRightPosition(const RECT& work, int width, int height, UINT dpi)
+{
+    const int gap = MulDiv(kLogicalGap, dpi, 96);
+    POINT pt;
+    pt.x = work.right - width - gap - GetSystemMetrics(SM_XVIRTUALSCREEN);
+    pt.y = work.bottom - height - gap - GetSystemMetrics(SM_YVIRTUALSCREEN);
+    return pt;
+}
+
 // Load the embedded font.otf (resource TTSG_FONT) so CreateFont can use family "TTSG".
 void LoadEmbeddedFont(HINSTANCE inst)
 {
@@ -162,6 +187,27 @@ void CountdownWindow::ApplyVisibility()
     ShowWindow(hwnd_, wantShown_ ? SW_SHOWNA : SW_HIDE);
 }
 
+COLORREF CountdownWindow::EffectiveColorKey() const
+{
+    // A pure-black background would be eaten by the black color key, so switch
+    // the key to a color nothing else draws in.
+    return (bgEnabled_ && bgColor_ == kColorKey) ? kColorKeyAlt : kColorKey;
+}
+
+void CountdownWindow::SetBackground(bool enabled, COLORREF color)
+{
+    if (bgEnabled_ == enabled && bgColor_ == color)
+        return;
+    bgEnabled_ = enabled;
+    bgColor_ = color;
+    if (hwnd_ && IsWindow(hwnd_)) {
+        // The color key is set at creation time, so recreate the window to
+        // apply it immediately (EnsureCreated is otherwise the self-heal path).
+        Destroy();
+        EnsureCreated();
+    }
+}
+
 void CountdownWindow::EnsureCreated()
 {
     if (!enabled_ || !wantShown_)
@@ -180,20 +226,16 @@ void CountdownWindow::EnsureCreated()
 
     RECT work{}, monitor{};
     GetPrimaryMonitorRects(work, monitor);
-    // Child coordinates are relative to the desktop host, whose origin is the
-    // virtual screen's top-left (NOT the primary monitor's when another monitor
-    // sits left/above it), while the monitor rects are in virtual-screen coords.
-    const int x = work.right - width_ - GetSystemMetrics(SM_XVIRTUALSCREEN);
-    const int y = work.bottom - height_ - GetSystemMetrics(SM_YVIRTUALSCREEN);
+    const POINT pos = BottomRightPosition(work, width_, height_, dpi);
 
     CreateFontIfNeeded();
 
     hwnd_ = CreateWindowExW(WS_EX_LAYERED | WS_EX_TOOLWINDOW, str::kCountdownClass, L"",
-                            WS_CHILD | WS_CLIPCHILDREN, x, y, width_, height_, host, nullptr,
-                            inst_, this);
+                            WS_CHILD | WS_CLIPCHILDREN, pos.x, pos.y, width_, height_, host,
+                            nullptr, inst_, this);
     if (!hwnd_)
         return;
-    SetLayeredWindowAttributes(hwnd_, kColorKey, 0, LWA_COLORKEY);
+    SetLayeredWindowAttributes(hwnd_, EffectiveColorKey(), 0, LWA_COLORKEY);
     // On top of the host's other children (e.g. desktop icons hosted in the same
     // window); still below every top-level window.
     SetWindowPos(hwnd_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -214,9 +256,8 @@ void CountdownWindow::Reposition()
         return;
     RECT work{}, monitor{};
     GetPrimaryMonitorRects(work, monitor);
-    const int x = work.right - width_ - GetSystemMetrics(SM_XVIRTUALSCREEN);
-    const int y = work.bottom - height_ - GetSystemMetrics(SM_YVIRTUALSCREEN);
-    SetWindowPos(hwnd_, nullptr, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    const POINT pos = BottomRightPosition(work, width_, height_, GetUiDpi());
+    SetWindowPos(hwnd_, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void CountdownWindow::Destroy()
@@ -247,19 +288,38 @@ LRESULT CountdownWindow::HandleMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp
         HDC dc = BeginPaint(hwnd_, &ps);
         RECT rc;
         GetClientRect(hwnd_, &rc);
-        FillRect(dc, &rc, static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+        UINT dpi = GetUiDpi();
+
+        // The color key shows through as transparent; with a background enabled
+        // a rounded plate is drawn on top of it.
+        HBRUSH keyBrush = CreateSolidBrush(EffectiveColorKey());
+        FillRect(dc, &rc, keyBrush);
+        DeleteObject(keyBrush);
+        if (bgEnabled_) {
+            HBRUSH fill = CreateSolidBrush(bgColor_);
+            HPEN pen = CreatePen(PS_SOLID, 1, bgColor_);
+            HGDIOBJ oldBrush = SelectObject(dc, fill);
+            HGDIOBJ oldPen = SelectObject(dc, pen);
+            const int radius = MulDiv(kCornerRadius, dpi, 96);
+            RoundRect(dc, rc.left, rc.top, rc.right, rc.bottom, radius, radius);
+            SelectObject(dc, oldPen);
+            SelectObject(dc, oldBrush);
+            DeleteObject(pen);
+            DeleteObject(fill);
+        }
         SetBkMode(dc, TRANSPARENT);
         HFONT oldFont = static_cast<HFONT>(SelectObject(dc, font_));
 
-        UINT dpi = GetUiDpi();
+        // On light background plates the dark color set stays readable.
+        const bool lightBg = bgEnabled_ && IsLightColor(bgColor_);
         const int margin = MulDiv(kMargin, dpi, 96);
 
         RECT rcTitle = {margin, margin, 0, 0};
-        SetTextColor(dc, kColorWhite);
+        SetTextColor(dc, lightBg ? kColorBlack : kColorWhite);
         DrawTextW(dc, str::kAppName, -1, &rcTitle, DT_LEFT | DT_TOP | DT_SINGLELINE | DT_NOCLIP);
 
         wchar_t buf[16];
-        COLORREF color = kColorWhite;
+        COLORREF color = lightBg ? kColorBlack : kColorWhite;
         if (remainingSeconds_ == kNoRemaining) {
             wcsncpy(buf, str::kNoTime, 16);
             buf[15] = L'\0';
@@ -280,7 +340,7 @@ LRESULT CountdownWindow::HandleMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp
         } else {
             swprintf(buf, 16, L"%02lld:%02lld", remainingSeconds_ / 60,
                      remainingSeconds_ % 60);
-            color = kColorYellow;
+            color = lightBg ? kColorAmber : kColorYellow;
         }
 
         RECT rcTime = {MulDiv(kTimeLeft, dpi, 96), margin, rc.right - margin, 0};

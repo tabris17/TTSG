@@ -144,6 +144,11 @@ void App::LoadSettings()
     }
     if (ReadDword(str::kRegShowCount, value))
         countdown_.SetWantShown(value != 0);
+    if (ReadDword(str::kRegBgEnabled, value))
+        bgEnabled_ = value != 0;
+    if (ReadDword(str::kRegBgColor, value))
+        bgColor_ = (COLORREF)value;
+    countdown_.SetBackground(bgEnabled_, bgColor_);
 
     wcsncpy(message_, str::kMsgDefault, kMaxMessageLen);
     message_[kMaxMessageLen - 1] = L'\0';
@@ -341,6 +346,15 @@ void App::ApplySettings(int startMin, int endMin, int durationMin, const wchar_t
     Recompute();
 }
 
+void App::ApplyCountdownBackground(bool enabled, COLORREF color)
+{
+    bgEnabled_ = enabled;
+    bgColor_ = color;
+    WriteDword(str::kRegBgEnabled, enabled ? 1 : 0);
+    WriteDword(str::kRegBgColor, (DWORD)color);
+    countdown_.SetBackground(enabled, color);
+}
+
 bool App::ResetAll()
 {
     // Delete the whole settings tree (all values under HKCU\Software\TTSG),
@@ -360,7 +374,10 @@ bool App::ResetAll()
     durationMin_ = kDefaultDurationMin;
     wcsncpy(message_, str::kMsgDefault, kMaxMessageLen);
     message_[kMaxMessageLen - 1] = L'\0';
+    bgEnabled_ = false;
+    bgColor_ = CountdownWindow::kDefaultBgColor;
     countdown_.SetWantShown(true); // default show/hide intent
+    countdown_.SetBackground(bgEnabled_, bgColor_);
     Recompute();
     return ok;
 }

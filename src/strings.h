@@ -20,6 +20,8 @@ inline constexpr wchar_t kRegEnd[]         = L"EndMinutes";
 inline constexpr wchar_t kRegDuration[]    = L"DurationMinutes";
 inline constexpr wchar_t kRegShowCount[]   = L"ShowCountdown";
 inline constexpr wchar_t kRegMessage[]     = L"Message";
+inline constexpr wchar_t kRegBgEnabled[]   = L"BackgroundEnabled";
+inline constexpr wchar_t kRegBgColor[]     = L"BackgroundColor";
 
 // tray menu
 inline constexpr wchar_t kTrayOpen[]       = L"打开设置…";
@@ -44,6 +46,8 @@ inline constexpr wchar_t kLabelMessage[]   = L"提醒文案：";
 inline constexpr wchar_t kLabelBoot[]      = L"开机时间：";
 inline constexpr wchar_t kLabelRemain[]    = L"剩余时间：";
 inline constexpr wchar_t kAutorun[]        = L"开机自动运行";
+inline constexpr wchar_t kBgCheck[]        = L"倒计时组件显示背景色";
+inline constexpr wchar_t kBgColorTip[]     = L"选择背景颜色";
 inline constexpr wchar_t kOk[]             = L"确定";
 inline constexpr wchar_t kCancel[]         = L"取消";
 inline constexpr wchar_t kReset[]          = L"重置";

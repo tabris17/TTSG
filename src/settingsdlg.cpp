@@ -1,5 +1,6 @@
 #include "settingsdlg.h"
 
+#include <commdlg.h>
 #include <commctrl.h>
 #include <windowsx.h>
 
@@ -12,7 +13,7 @@ namespace {
 
 // Logical (96 dpi) layout
 constexpr int kDlgW = 340;
-constexpr int kDlgH = 304;
+constexpr int kDlgH = 336;
 constexpr int kMargin = 12;
 constexpr int kButtonW = 80;
 constexpr int kButtonH = 26;
@@ -52,6 +53,8 @@ private:
     void CreateControls(UINT dpi);
     void SetMessageText(const wchar_t* text);
     void RefreshInfo();
+    void UpdateBgControls();  // enable/disable the color swatch
+    void ChooseBgColor();     // system color picker, updates the working copy
     bool OnOk();
     void OnReset();
     void Finish(INT_PTR result);
@@ -62,6 +65,9 @@ private:
     HFONT font_ = nullptr;
     HACCEL accel_ = nullptr;
     INT_PTR result_ = 0;
+    // Working copies of the background setting; applied only on OK.
+    bool bgSel_ = false;
+    COLORREF bgColorSel_ = CountdownWindow::kDefaultBgColor;
 };
 
 void ShowSettingsDialog(HWND owner, App& app)
@@ -122,6 +128,10 @@ INT_PTR SettingsDialog::Show(HWND owner, App& app)
     SetDtpTime(GetDlgItem(hwnd_, IDC_DURATION), app_->DurationMin());
     Button_SetCheck(GetDlgItem(hwnd_, IDC_AUTORUN), App::AutorunEnabled() ? BST_CHECKED
                                                                           : BST_UNCHECKED);
+    bgSel_ = app_->BgEnabled();
+    bgColorSel_ = app_->BgColor();
+    Button_SetCheck(GetDlgItem(hwnd_, IDC_BG_ENABLED), bgSel_ ? BST_CHECKED : BST_UNCHECKED);
+    UpdateBgControls();
     SetMessageText(app_->Message());
     RefreshInfo();
 
@@ -216,6 +226,13 @@ void SettingsDialog::CreateControls(UINT dpi)
     ctl = CreateWindowExW(0, L"BUTTON", str::kAutorun, child | WS_TABSTOP | BS_AUTOCHECKBOX,
                           S(kMargin), S(232), S(200), S(20), hwnd_,
                           reinterpret_cast<HMENU>(IDC_AUTORUN), nullptr, nullptr);
+    ctl = CreateWindowExW(0, L"BUTTON", str::kBgCheck, child | WS_TABSTOP | BS_AUTOCHECKBOX,
+                          S(kMargin), S(258), S(150), S(20), hwnd_,
+                          reinterpret_cast<HMENU>(IDC_BG_ENABLED), nullptr, nullptr);
+    // Color swatch: owner-drawn in WM_DRAWITEM, filled with the chosen color.
+    ctl = CreateWindowExW(0, L"BUTTON", L"", child | WS_TABSTOP | BS_OWNERDRAW, S(170), S(256),
+                          S(36), S(22), hwnd_, reinterpret_cast<HMENU>(IDC_BG_COLOR), nullptr,
+                          nullptr);
     ctl = CreateWindowExW(0, L"BUTTON", str::kReset, child | WS_TABSTOP | BS_PUSHBUTTON,
                           S(kMargin), S(kDlgH - kMargin - kButtonH), S(kButtonW), S(kButtonH),
                           hwnd_, reinterpret_cast<HMENU>(IDC_RESET), nullptr, nullptr);
@@ -233,7 +250,7 @@ void SettingsDialog::CreateControls(UINT dpi)
             SendMessageW(c, WM_SETFONT, reinterpret_cast<WPARAM>(font_), TRUE);
     }
 
-    // Tooltip for the Reset button.
+    // Tooltips for the Reset button and the color swatch.
     HWND tooltip = CreateWindowExW(0, TOOLTIPS_CLASSW, nullptr, WS_POPUP | TTS_ALWAYSTIP,
                                    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
                                    hwnd_, nullptr, nullptr, nullptr);
@@ -246,6 +263,10 @@ void SettingsDialog::CreateControls(UINT dpi)
         ti.uId = reinterpret_cast<UINT_PTR>(GetDlgItem(hwnd_, IDC_RESET));
         GetClientRect(reinterpret_cast<HWND>(ti.uId), &ti.rect);
         ti.lpszText = const_cast<LPWSTR>(str::kResetTip);
+        SendMessageW(tooltip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
+        ti.uId = reinterpret_cast<UINT_PTR>(GetDlgItem(hwnd_, IDC_BG_COLOR));
+        GetClientRect(reinterpret_cast<HWND>(ti.uId), &ti.rect);
+        ti.lpszText = const_cast<LPWSTR>(str::kBgColorTip);
         SendMessageW(tooltip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM>(&ti));
     }
     (void)ctl;
@@ -267,6 +288,31 @@ void SettingsDialog::RefreshInfo()
     SetWindowTextW(GetDlgItem(hwnd_, IDC_BOOT_VALUE), buf);
     app_->FormatRemaining(buf, 32);
     SetWindowTextW(GetDlgItem(hwnd_, IDC_REMAIN_VALUE), buf);
+}
+
+void SettingsDialog::UpdateBgControls()
+{
+    // The picker is only meaningful while the background plate is enabled.
+    EnableWindow(GetDlgItem(hwnd_, IDC_BG_COLOR), bgSel_ ? TRUE : FALSE);
+}
+
+void SettingsDialog::ChooseBgColor()
+{
+    // Starter palette (rest of the 16 slots default to black).
+    static COLORREF customColors[16] = {
+        RGB(45, 45, 48),  RGB(64, 64, 64),   RGB(128, 128, 128), RGB(255, 255, 255),
+        RGB(0, 96, 160),  RGB(0, 128, 64),   RGB(128, 0, 128),   RGB(191, 0, 255),
+    };
+    CHOOSECOLORW cc{};
+    cc.lStructSize = sizeof(cc);
+    cc.hwndOwner = hwnd_;
+    cc.lpCustColors = customColors;
+    cc.Flags = CC_RGBINIT;
+    cc.rgbResult = bgColorSel_;
+    if (ChooseColorW(&cc)) {
+        bgColorSel_ = cc.rgbResult; // applied to the widget only on OK
+        InvalidateRect(GetDlgItem(hwnd_, IDC_BG_COLOR), nullptr, TRUE);
+    }
 }
 
 bool SettingsDialog::OnOk()
@@ -294,6 +340,7 @@ bool SettingsDialog::OnOk()
     GetWindowTextW(GetDlgItem(hwnd_, IDC_MESSAGE), msg, (int)App::kMaxMessageLen);
 
     app_->ApplySettings(startMin, endMin, durationMin, msg);
+    app_->ApplyCountdownBackground(bgSel_, bgColorSel_);
     Finish(1);
     return true;
 }
@@ -313,6 +360,11 @@ void SettingsDialog::OnReset()
     SetDtpTime(GetDlgItem(hwnd_, IDC_DURATION), App::kDefaultDurationMin);
     Button_SetCheck(GetDlgItem(hwnd_, IDC_AUTORUN), App::AutorunEnabled() ? BST_CHECKED
                                                                           : BST_UNCHECKED);
+    bgSel_ = false; // ResetAll restored the defaults (plate off, default color)
+    bgColorSel_ = CountdownWindow::kDefaultBgColor;
+    Button_SetCheck(GetDlgItem(hwnd_, IDC_BG_ENABLED), BST_UNCHECKED);
+    UpdateBgControls();
+    InvalidateRect(GetDlgItem(hwnd_, IDC_BG_COLOR), nullptr, TRUE);
     SetMessageText(app_->Message()); // ResetAll restored the default message
     RefreshInfo();
 }
@@ -353,6 +405,30 @@ LRESULT SettingsDialog::HandleMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         case IDC_RESET:
             OnReset();
             return 0;
+        case IDC_BG_ENABLED:
+            if (HIWORD(wp) == BN_CLICKED) {
+                // BS_AUTOCHECKBOX has already toggled; just mirror the state.
+                bgSel_ = Button_GetCheck(reinterpret_cast<HWND>(lp)) == BST_CHECKED;
+                UpdateBgControls();
+            }
+            return 0;
+        case IDC_BG_COLOR:
+            if (HIWORD(wp) == BN_CLICKED)
+                ChooseBgColor();
+            return 0;
+        }
+        break;
+    case WM_DRAWITEM:
+        if (wp == IDC_BG_COLOR) {
+            auto* dis = reinterpret_cast<DRAWITEMSTRUCT*>(lp);
+            HBRUSH fill = CreateSolidBrush(bgColorSel_);
+            FillRect(dis->hDC, &dis->rcItem, fill);
+            DeleteObject(fill);
+            FrameRect(dis->hDC, &dis->rcItem,
+                      static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));
+            if (dis->itemState & ODS_FOCUS)
+                DrawFocusRect(dis->hDC, &dis->rcItem);
+            return TRUE;
         }
         break;
     case WM_TIMER:

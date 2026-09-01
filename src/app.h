@@ -23,6 +23,9 @@ public:
     void FormatRemaining(wchar_t* buf, size_t bufCount) const; // "hh:mm:ss", negative when overtime
     const wchar_t* Message() const { return message_; } // goodbye alert text
     void ApplySettings(int startMin, int endMin, int durationMin, const wchar_t* message);
+    bool BgEnabled() const { return bgEnabled_; }       // countdown background plate
+    COLORREF BgColor() const { return bgColor_; }
+    void ApplyCountdownBackground(bool enabled, COLORREF color);
     static bool AutorunEnabled();
     static bool SetAutorun(bool enable);
 
@@ -69,6 +72,10 @@ private:
 
     // Goodbye alert text (persisted as REG_SZ; LoadSettings fills the default).
     wchar_t message_[kMaxMessageLen] = {};
+
+    // Countdown background plate (persisted as BackgroundEnabled / BackgroundColor).
+    bool bgEnabled_ = false;
+    COLORREF bgColor_ = CountdownWindow::kDefaultBgColor;
 
     // Runtime state
     bool bootFound_ = false;

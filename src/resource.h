@@ -23,6 +23,8 @@
 // ---- goodbye alert controls ----
 #define IDC_ALERT_OK        310
 #define IDC_MESSAGE         311 // settings dialog: reminder message combo box
+#define IDC_BG_ENABLED      312 // settings dialog: countdown background checkbox
+#define IDC_BG_COLOR        313 // settings dialog: countdown background color swatch
 
 // ---- timers ----
 #define IDT_TICK            1
