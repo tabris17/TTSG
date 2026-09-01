@@ -30,6 +30,23 @@ void WriteDword(const wchar_t* valueName, DWORD value)
                     sizeof(value));
 }
 
+bool ReadString(const wchar_t* valueName, wchar_t* buf, size_t bufCount)
+{
+    DWORD size = (DWORD)(bufCount * sizeof(wchar_t));
+    LSTATUS st = RegGetValueW(HKEY_CURRENT_USER, str::kRegAppKey, valueName, RRF_RT_REG_SZ,
+                              nullptr, buf, &size);
+    if (st != ERROR_SUCCESS)
+        return false;
+    buf[bufCount - 1] = L'\0'; // RegGetValueW NUL-terminates, but stay safe
+    return true;
+}
+
+void WriteString(const wchar_t* valueName, const wchar_t* value)
+{
+    RegSetKeyValueW(HKEY_CURRENT_USER, str::kRegAppKey, valueName, REG_SZ, value,
+                    (DWORD)((wcslen(value) + 1) * sizeof(wchar_t)));
+}
+
 int ParseInt(const wchar_t* text, int fallback)
 {
     if (!text || !*text)
@@ -118,7 +135,7 @@ void App::LoadSettings()
     if (ReadDword(str::kRegStart, value))
         startMin_ = Clamp((int)value, 0, 1439);
     if (ReadDword(str::kRegEnd, value))
-        endMin_ = Clamp((int)value, 1, 1440);
+        endMin_ = Clamp((int)value, 1, 1439);
     if (ReadDword(str::kRegDuration, value))
         durationMin_ = Clamp((int)value, 0, 1439);
     if (startMin_ >= endMin_) {
@@ -127,6 +144,14 @@ void App::LoadSettings()
     }
     if (ReadDword(str::kRegShowCount, value))
         countdown_.SetWantShown(value != 0);
+
+    wcsncpy(message_, str::kMsgDefault, kMaxMessageLen);
+    message_[kMaxMessageLen - 1] = L'\0';
+    wchar_t msg[kMaxMessageLen];
+    if (ReadString(str::kRegMessage, msg, kMaxMessageLen) && msg[0] != L'\0') {
+        wcsncpy(message_, msg, kMaxMessageLen);
+        message_[kMaxMessageLen - 1] = L'\0';
+    }
 }
 
 void App::ParseCommandLine()
@@ -139,10 +164,10 @@ void App::ParseCommandLine()
         return;
     if (argc >= 4) {
         startMin_ = Clamp(ParseInt(argv[1], startMin_), 0, 1439);
-        endMin_ = Clamp(ParseInt(argv[2], endMin_), 1, 1440);
+        endMin_ = Clamp(ParseInt(argv[2], endMin_), 1, 1439);
         durationMin_ = Clamp(ParseInt(argv[3], durationMin_), 0, 1439);
         if (startMin_ >= endMin_)
-            endMin_ = Clamp(startMin_ + 1, 1, 1440);
+            endMin_ = Clamp(startMin_ + 1, 1, 1439);
     }
     LocalFree(argv);
 }
@@ -213,7 +238,7 @@ void App::OnTick()
         if (rem <= 0 && !notified_) {
             notified_ = true;
             MessageBeep(MB_ICONINFORMATION);
-            ShowGoodbyeAlert(inst_);
+            ShowGoodbyeAlert(inst_, message_);
         }
     }
     // Self-heal: recreates the window after explorer restart / desktop refresh.
@@ -291,14 +316,20 @@ void App::HideCountdown()
     SetCountdownShown(false);
 }
 
-void App::ApplySettings(int startMin, int endMin, int durationMin)
+void App::ApplySettings(int startMin, int endMin, int durationMin, const wchar_t* message)
 {
     startMin_ = Clamp(startMin, 0, 1439);
-    endMin_ = Clamp(endMin, 1, 1440);
+    endMin_ = Clamp(endMin, 1, 1439);
     durationMin_ = Clamp(durationMin, 0, 1439);
     WriteDword(str::kRegStart, (DWORD)startMin_);
     WriteDword(str::kRegEnd, (DWORD)endMin_);
     WriteDword(str::kRegDuration, (DWORD)durationMin_);
+
+    // Empty text falls back to the default message.
+    const wchar_t* msg = (message && message[0] != L'\0') ? message : str::kMsgDefault;
+    wcsncpy(message_, msg, kMaxMessageLen);
+    message_[kMaxMessageLen - 1] = L'\0';
+    WriteString(str::kRegMessage, message_);
     Recompute();
 }
 
@@ -319,6 +350,8 @@ bool App::ResetAll()
     startMin_ = kDefaultStartMin;
     endMin_ = kDefaultEndMin;
     durationMin_ = kDefaultDurationMin;
+    wcsncpy(message_, str::kMsgDefault, kMaxMessageLen);
+    message_[kMaxMessageLen - 1] = L'\0';
     countdown_.SetWantShown(true); // default show/hide intent
     Recompute();
     return ok;

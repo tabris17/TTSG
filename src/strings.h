@@ -19,14 +19,20 @@ inline constexpr wchar_t kRegStart[]       = L"StartMinutes";
 inline constexpr wchar_t kRegEnd[]         = L"EndMinutes";
 inline constexpr wchar_t kRegDuration[]    = L"DurationMinutes";
 inline constexpr wchar_t kRegShowCount[]   = L"ShowCountdown";
+inline constexpr wchar_t kRegMessage[]     = L"Message";
 
 // tray menu
 inline constexpr wchar_t kTrayOpen[]       = L"打开设置…";
 inline constexpr wchar_t kTrayCountdown[]  = L"显示倒计时";
 inline constexpr wchar_t kTrayExit[]       = L"退出";
 
-// goodbye popup
-inline constexpr wchar_t kGoodbyeMsg[]     = L"下班时间到了！";
+// goodbye popup message: built-in presets and the default
+inline constexpr wchar_t kMsgDefault[] = L"Time to say goodbye!";
+inline constexpr const wchar_t* const kBuiltinMsgs[] = {
+    L"Time to say goodbye!",
+    L"下班时间到了！",
+    L"今天的班就上到这里了！",
+};
 
 // settings dialog
 inline constexpr wchar_t kSettingsTitle[]  = L"TTSG 设置";
@@ -34,6 +40,7 @@ inline constexpr wchar_t kLabelRange[]     = L"考勤时间段：";
 inline constexpr wchar_t kLabelFrom[]      = L"从";
 inline constexpr wchar_t kLabelTo[]        = L"到";
 inline constexpr wchar_t kLabelDuration[]  = L"倒计时时长：";
+inline constexpr wchar_t kLabelMessage[]   = L"提醒文案：";
 inline constexpr wchar_t kLabelBoot[]      = L"开机时间：";
 inline constexpr wchar_t kLabelRemain[]    = L"剩余时间：";
 inline constexpr wchar_t kAutorun[]        = L"开机自动运行";

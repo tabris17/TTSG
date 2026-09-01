@@ -12,7 +12,7 @@ namespace {
 
 // Logical (96 dpi) layout
 constexpr int kDlgW = 340;
-constexpr int kDlgH = 270;
+constexpr int kDlgH = 304;
 constexpr int kMargin = 12;
 constexpr int kButtonW = 80;
 constexpr int kButtonH = 26;
@@ -50,6 +50,7 @@ private:
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     LRESULT HandleMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
     void CreateControls(UINT dpi);
+    void SetMessageText(const wchar_t* text);
     void RefreshInfo();
     bool OnOk();
     void OnReset();
@@ -121,6 +122,7 @@ INT_PTR SettingsDialog::Show(HWND owner, App& app)
     SetDtpTime(GetDlgItem(hwnd_, IDC_DURATION), app_->DurationMin());
     Button_SetCheck(GetDlgItem(hwnd_, IDC_AUTORUN), App::AutorunEnabled() ? BST_CHECKED
                                                                           : BST_UNCHECKED);
+    SetMessageText(app_->Message());
     RefreshInfo();
 
     ACCEL accel[] = {
@@ -188,20 +190,31 @@ void SettingsDialog::CreateControls(UINT dpi)
                           child | WS_TABSTOP | WS_BORDER | DTS_TIMEFORMAT | DTS_UPDOWN, S(110),
                           S(76), S(kDtpW), S(kDtpH), hwnd_,
                           reinterpret_cast<HMENU>(IDC_DURATION), nullptr, nullptr);
-    CreateWindowExW(0, L"STATIC", L"", child | SS_ETCHEDHORZ, S(kMargin), S(112), S(kDlgW - 24),
+    CreateWindowExW(0, L"STATIC", str::kLabelMessage, child | SS_LEFT, S(kMargin), S(110),
+                    S(100), S(17), hwnd_, nullptr, nullptr, nullptr);
+    // Editable combo box: pick a built-in reminder message or type a custom one.
+    // Height covers the edit field plus the drop-down list.
+    ctl = CreateWindowExW(0, WC_COMBOBOXW, L"",
+                          child | WS_TABSTOP | WS_VSCROLL | CBS_DROPDOWN | CBS_AUTOHSCROLL,
+                          S(110), S(107), S(kDlgW - kMargin - 110), S(120), hwnd_,
+                          reinterpret_cast<HMENU>(IDC_MESSAGE), nullptr, nullptr);
+    SendMessageW(ctl, CB_LIMITTEXT, App::kMaxMessageLen - 1, 0);
+    for (const wchar_t* m : str::kBuiltinMsgs)
+        SendMessageW(ctl, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(m));
+    CreateWindowExW(0, L"STATIC", L"", child | SS_ETCHEDHORZ, S(kMargin), S(146), S(kDlgW - 24),
                     S(8), hwnd_, nullptr, nullptr, nullptr);
-    CreateWindowExW(0, L"STATIC", str::kLabelBoot, child | SS_LEFT, S(kMargin), S(128), S(80),
+    CreateWindowExW(0, L"STATIC", str::kLabelBoot, child | SS_LEFT, S(kMargin), S(162), S(80),
                     S(17), hwnd_, nullptr, nullptr, nullptr);
-    ctl = CreateWindowExW(0, L"STATIC", L"", child | SS_LEFT, S(100), S(128), S(200), S(17),
+    ctl = CreateWindowExW(0, L"STATIC", L"", child | SS_LEFT, S(100), S(162), S(200), S(17),
                           hwnd_, reinterpret_cast<HMENU>(IDC_BOOT_VALUE), nullptr, nullptr);
-    CreateWindowExW(0, L"STATIC", str::kLabelRemain, child | SS_LEFT, S(kMargin), S(154),
+    CreateWindowExW(0, L"STATIC", str::kLabelRemain, child | SS_LEFT, S(kMargin), S(188),
                     S(80), S(17), hwnd_, nullptr, nullptr, nullptr);
-    ctl = CreateWindowExW(0, L"STATIC", L"", child | SS_LEFT, S(100), S(154), S(200), S(17),
+    ctl = CreateWindowExW(0, L"STATIC", L"", child | SS_LEFT, S(100), S(188), S(200), S(17),
                           hwnd_, reinterpret_cast<HMENU>(IDC_REMAIN_VALUE), nullptr, nullptr);
-    CreateWindowExW(0, L"STATIC", L"", child | SS_ETCHEDHORZ, S(kMargin), S(186), S(kDlgW - 24),
+    CreateWindowExW(0, L"STATIC", L"", child | SS_ETCHEDHORZ, S(kMargin), S(220), S(kDlgW - 24),
                     S(8), hwnd_, nullptr, nullptr, nullptr);
     ctl = CreateWindowExW(0, L"BUTTON", str::kAutorun, child | WS_TABSTOP | BS_AUTOCHECKBOX,
-                          S(kMargin), S(198), S(200), S(20), hwnd_,
+                          S(kMargin), S(232), S(200), S(20), hwnd_,
                           reinterpret_cast<HMENU>(IDC_AUTORUN), nullptr, nullptr);
     ctl = CreateWindowExW(0, L"BUTTON", str::kReset, child | WS_TABSTOP | BS_PUSHBUTTON,
                           S(kMargin), S(kDlgH - kMargin - kButtonH), S(kButtonW), S(kButtonH),
@@ -238,6 +251,15 @@ void SettingsDialog::CreateControls(UINT dpi)
     (void)ctl;
 }
 
+void SettingsDialog::SetMessageText(const wchar_t* text)
+{
+    HWND combo = GetDlgItem(hwnd_, IDC_MESSAGE);
+    SetWindowTextW(combo, text);
+    // Select the matching built-in item when there is one; for custom text the
+    // edit field simply keeps what SetWindowTextW put there.
+    ComboBox_SelectString(combo, -1, text);
+}
+
 void SettingsDialog::RefreshInfo()
 {
     wchar_t buf[32];
@@ -268,7 +290,10 @@ bool SettingsDialog::OnOk()
         }
     }
 
-    app_->ApplySettings(startMin, endMin, durationMin);
+    wchar_t msg[App::kMaxMessageLen];
+    GetWindowTextW(GetDlgItem(hwnd_, IDC_MESSAGE), msg, (int)App::kMaxMessageLen);
+
+    app_->ApplySettings(startMin, endMin, durationMin, msg);
     Finish(1);
     return true;
 }
@@ -288,6 +313,7 @@ void SettingsDialog::OnReset()
     SetDtpTime(GetDlgItem(hwnd_, IDC_DURATION), App::kDefaultDurationMin);
     Button_SetCheck(GetDlgItem(hwnd_, IDC_AUTORUN), App::AutorunEnabled() ? BST_CHECKED
                                                                           : BST_UNCHECKED);
+    SetMessageText(app_->Message()); // ResetAll restored the default message
     RefreshInfo();
 }
 

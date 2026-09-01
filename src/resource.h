@@ -22,6 +22,7 @@
 
 // ---- goodbye alert controls ----
 #define IDC_ALERT_OK        310
+#define IDC_MESSAGE         311 // settings dialog: reminder message combo box
 
 // ---- timers ----
 #define IDT_TICK            1

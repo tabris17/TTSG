@@ -21,7 +21,8 @@ public:
     void FormatBootTime(wchar_t* buf, size_t bufCount) const;
     long long RemainingSeconds() const; // <0 when no boot time was found
     void FormatRemaining(wchar_t* buf, size_t bufCount) const; // "hh:mm:ss"
-    void ApplySettings(int startMin, int endMin, int durationMin);
+    const wchar_t* Message() const { return message_; } // goodbye alert text
+    void ApplySettings(int startMin, int endMin, int durationMin, const wchar_t* message);
     static bool AutorunEnabled();
     static bool SetAutorun(bool enable);
 
@@ -29,6 +30,7 @@ public:
     static constexpr int kDefaultStartMin = 8 * 60 + 30;    // attendance window start 08:30
     static constexpr int kDefaultEndMin = 10 * 60 + 30;     // attendance window end   10:30
     static constexpr int kDefaultDurationMin = 8 * 60;      // countdown duration      08:00
+    static constexpr size_t kMaxMessageLen = 128;           // goodbye message, incl. terminator
 
     // Deletes all settings (HKCU\Software\TTSG and the autorun value) and
     // restores the in-memory state to defaults. Returns false on failure.
@@ -64,6 +66,9 @@ private:
     int startMin_ = kDefaultStartMin;
     int endMin_ = kDefaultEndMin;
     int durationMin_ = kDefaultDurationMin;
+
+    // Goodbye alert text (persisted as REG_SZ; LoadSettings fills the default).
+    wchar_t message_[kMaxMessageLen] = {};
 
     // Runtime state
     bool bootFound_ = false;

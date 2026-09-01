@@ -3,5 +3,6 @@
 #pragma once
 #include <windows.h>
 
-// Shows the alert and blocks until the user dismisses it.
-void ShowGoodbyeAlert(HINSTANCE inst);
+// Shows the alert and blocks until the user dismisses it. The card adapts its
+// size to the message text; a null/empty message falls back to the default.
+void ShowGoodbyeAlert(HINSTANCE inst, const wchar_t* message);

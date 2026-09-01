@@ -11,15 +11,21 @@
 
 namespace {
 
-// Logical (96 dpi) layout of the center card.
-constexpr int kCardW = 210;
-constexpr int kCardH = 110;
+// Logical (96 dpi) layout of the center card. The card grows with the message
+// text: its width is the (wrapped) text width plus horizontal margins, clamped
+// to [kCardMinW, kCardMaxW]; its height fits the text plus the OK button.
+constexpr int kCardMinW = 210;
+constexpr int kCardMaxW = 480;
+constexpr int kMsgMarginX = 24;  // left/right text padding inside the card
+constexpr int kMsgPadTop = 20;   // space between the card's top edge and the text
+constexpr int kMsgPadBottom = 14; // space below the OK button
 constexpr int kMsgFontHeight = 16;
 // Same size as a MessageBoxW button, measured on a live system (88x28 @96dpi).
 constexpr int kButtonW = 88;
 constexpr int kButtonH = 28;
-constexpr int kButtonGap = 14; // gap between the card's bottom edge and the button
+constexpr int kButtonGap = 14; // gap between the text block and the button
 constexpr BYTE kMaskAlpha = 128; // 50% black overlay
+constexpr size_t kMaxMsgLen = 128; // message buffer size, incl. terminator
 
 constexpr COLORREF kColorBlack = RGB(0, 0, 0);
 
@@ -50,7 +56,7 @@ RECT MonitorRectFor(HWND hwnd)
 
 class GoodbyeAlert {
 public:
-    void Show(HINSTANCE inst);
+    void Show(HINSTANCE inst, const wchar_t* message);
 
 private:
     static LRESULT CALLBACK MaskWndProc(HWND, UINT, WPARAM, LPARAM);
@@ -68,12 +74,13 @@ private:
     int buttonTop_ = 0; // card client-y of the OK button (bottom of text area)
     HFONT msgFont_ = nullptr;
     HFONT buttonFont_ = nullptr;
+    wchar_t msg_[kMaxMsgLen] = {};
 };
 
-void ShowGoodbyeAlert(HINSTANCE inst)
+void ShowGoodbyeAlert(HINSTANCE inst, const wchar_t* message)
 {
     GoodbyeAlert alert;
-    alert.Show(inst);
+    alert.Show(inst, message);
 }
 
 GoodbyeAlert* GoodbyeAlert::SelfFrom(HWND hwnd, UINT msg, LPARAM lp)
@@ -103,11 +110,16 @@ LRESULT CALLBACK GoodbyeAlert::CardWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARA
     return DefWindowProcW(hwnd, msg, wp, lp);
 }
 
-void GoodbyeAlert::Show(HINSTANCE inst)
+void GoodbyeAlert::Show(HINSTANCE inst, const wchar_t* message)
 {
     inst_ = inst;
     const UINT dpi = GetUiDpi();
     auto S = [&](int v) { return MulDiv(v, dpi, 96); };
+
+    if (!message || message[0] == L'\0')
+        message = str::kMsgDefault;
+    wcsncpy(msg_, message, kMaxMsgLen);
+    msg_[kMaxMsgLen - 1] = L'\0';
 
     WNDCLASSEXW wc{};
     wc.cbSize = sizeof(wc);
@@ -134,29 +146,8 @@ void GoodbyeAlert::Show(HINSTANCE inst)
         return;
     SetLayeredWindowAttributes(mask_, 0, kMaskAlpha, LWA_ALPHA);
 
-    // The card is centered on the monitor that currently has the foreground;
-    // it is owned by the mask so it always stays on top of it.
-    const int cardW = S(kCardW);
-    const int cardH = S(kCardH);
-    const RECT mon = MonitorRectFor(GetForegroundWindow());
-    const int x = (mon.left + mon.right) / 2 - cardW / 2;
-    const int y = (mon.top + mon.bottom) / 2 - cardH / 2;
-    card_ = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW, str::kAlertClass, L"", WS_POPUP,
-                            x, y, cardW, cardH, mask_, nullptr, inst, this);
-    if (!card_) {
-        DestroyWindow(mask_);
-        mask_ = nullptr;
-        return;
-    }
-
-    const int btnW = S(kButtonW);
-    const int btnH = S(kButtonH);
-    buttonTop_ = cardH - S(kButtonGap) - btnH;
-    HWND ok = CreateWindowExW(0, L"BUTTON", str::kOk, WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
-                              (cardW - btnW) / 2, buttonTop_, btnW, btnH, card_,
-                              reinterpret_cast<HMENU>(IDC_ALERT_OK), inst, nullptr);
-
     // Text font: the system message font, enlarged; button font: normal size.
+    // Fonts are created before the card so the card can be sized to the text.
     NONCLIENTMETRICSW ncm{};
     ncm.cbSize = sizeof(ncm);
     LOGFONTW lf{};
@@ -167,6 +158,53 @@ void GoodbyeAlert::Show(HINSTANCE inst)
     lf.lfHeight = -S(kMsgFontHeight);
     lf.lfWeight = FW_NORMAL;
     msgFont_ = CreateFontIndirectW(&lf);
+
+    // Measure the message: preferred card width is the single-line text width,
+    // clamped; text that exceeds the chosen width wraps and grows the height.
+    const int marginX = S(kMsgMarginX);
+    const RECT mon = MonitorRectFor(GetForegroundWindow());
+    int maxCardW = (mon.right - mon.left) * 9 / 10;
+    if (maxCardW > S(kCardMaxW))
+        maxCardW = S(kCardMaxW);
+    int cardW = S(kCardMinW);
+    int textH = S(kMsgFontHeight) + S(8); // fallback if GetDC fails
+    HDC dc = GetDC(nullptr);
+    if (dc) {
+        HFONT oldFont = static_cast<HFONT>(SelectObject(dc, msgFont_));
+        SIZE lineSize{};
+        GetTextExtentPoint32W(dc, msg_, (int)wcslen(msg_), &lineSize);
+        cardW = lineSize.cx + 2 * marginX;
+        if (cardW < S(kCardMinW))
+            cardW = S(kCardMinW);
+        if (cardW > maxCardW)
+            cardW = maxCardW;
+        RECT rcCalc{0, 0, cardW - 2 * marginX, 0};
+        DrawTextW(dc, msg_, -1, &rcCalc, DT_WORDBREAK | DT_CALCRECT);
+        textH = rcCalc.bottom - rcCalc.top;
+        SelectObject(dc, oldFont);
+        ReleaseDC(nullptr, dc);
+    }
+
+    const int btnW = S(kButtonW);
+    const int btnH = S(kButtonH);
+    const int cardH = S(kMsgPadTop) + textH + S(kButtonGap) + btnH + S(kMsgPadBottom);
+
+    // The card is centered on the monitor that currently has the foreground;
+    // it is owned by the mask so it always stays on top of it.
+    const int x = (mon.left + mon.right) / 2 - cardW / 2;
+    const int y = (mon.top + mon.bottom) / 2 - cardH / 2;
+    card_ = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW, str::kAlertClass, L"", WS_POPUP,
+                            x, y, cardW, cardH, mask_, nullptr, inst, this);
+    if (!card_) {
+        DestroyWindow(mask_);
+        mask_ = nullptr;
+        return;
+    }
+
+    buttonTop_ = S(kMsgPadTop) + textH + S(kButtonGap);
+    HWND ok = CreateWindowExW(0, L"BUTTON", str::kOk, WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
+                              (cardW - btnW) / 2, buttonTop_, btnW, btnH, card_,
+                              reinterpret_cast<HMENU>(IDC_ALERT_OK), inst, nullptr);
     if (ok && buttonFont_)
         SendMessageW(ok, WM_SETFONT, reinterpret_cast<WPARAM>(buttonFont_), TRUE);
 
@@ -271,14 +309,17 @@ LRESULT GoodbyeAlert::HandleCard(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         // Center the text block between the card's top edge and the button's
         // top edge. (DT_VCENTER only works with DT_SINGLELINE, so measure the
         // wrapped text first and position it manually.)
+        const int marginX = MulDiv(kMsgMarginX, GetUiDpi(), 96);
         RECT rcText = rc;
+        rcText.left += marginX;
+        rcText.right -= marginX;
         rcText.bottom = buttonTop_;
         RECT rcCalc = rcText;
-        DrawTextW(dc, str::kGoodbyeMsg, -1, &rcCalc, DT_CENTER | DT_WORDBREAK | DT_CALCRECT);
+        DrawTextW(dc, msg_, -1, &rcCalc, DT_CENTER | DT_WORDBREAK | DT_CALCRECT);
         const int textH = rcCalc.bottom - rcCalc.top;
         rcText.top = (buttonTop_ - textH) / 2;
         rcText.bottom = rcText.top + textH;
-        DrawTextW(dc, str::kGoodbyeMsg, -1, &rcText, DT_CENTER | DT_WORDBREAK);
+        DrawTextW(dc, msg_, -1, &rcText, DT_CENTER | DT_WORDBREAK);
         SelectObject(dc, oldFont);
         EndPaint(hwnd, &ps);
         return 0;
