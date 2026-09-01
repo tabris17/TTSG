@@ -19,8 +19,8 @@ public:
     int EndMin() const { return endMin_; }
     int DurationMin() const { return durationMin_; }
     void FormatBootTime(wchar_t* buf, size_t bufCount) const;
-    long long RemainingSeconds() const; // <0 when no boot time was found
-    void FormatRemaining(wchar_t* buf, size_t bufCount) const; // "hh:mm:ss"
+    long long RemainingSeconds() const; // -1 when no boot time; <0 past deadline (overtime)
+    void FormatRemaining(wchar_t* buf, size_t bufCount) const; // "hh:mm:ss", negative when overtime
     const wchar_t* Message() const { return message_; } // goodbye alert text
     void ApplySettings(int startMin, int endMin, int durationMin, const wchar_t* message);
     static bool AutorunEnabled();

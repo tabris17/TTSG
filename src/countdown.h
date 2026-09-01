@@ -8,8 +8,13 @@
 #pragma once
 #include <windows.h>
 
+#include <climits>
+
 class CountdownWindow {
 public:
+    // Sentinel for SetRemaining(): no boot time was found -> "--:--".
+    static constexpr long long kNoRemaining = LLONG_MIN;
+
     void Init(HINSTANCE inst, HWND owner);
 
     // Whether a boot time was found; when false the widget is destroyed.
@@ -26,7 +31,9 @@ public:
     void ApplyVisibility();
     bool IsShown() const { return hwnd_ && IsWindow(hwnd_) && IsWindowVisible(hwnd_); }
 
-    // seconds < 0 means "no boot time" -> "--:--". Values <= 0 clamp to 00:00.
+    // Seconds until the deadline. Negative values mean overtime past the
+    // deadline and are drawn as negative red time (mm:ss within the first
+    // hour, hh:mm beyond). kNoRemaining means "no boot time" -> "--:--".
     void SetRemaining(long long seconds);
     // Move back to the bottom-right corner of the primary work area.
     void Reposition();
@@ -46,6 +53,6 @@ private:
     bool classRegistered_ = false;
     bool enabled_ = false;
     bool wantShown_ = true;
-    long long remainingSeconds_ = -1;
+    long long remainingSeconds_ = kNoRemaining;
     int width_ = 0, height_ = 0;
 };

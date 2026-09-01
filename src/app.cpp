@@ -187,7 +187,7 @@ void App::Recompute()
     } else {
         goodbyeFT_ = {};
         countdown_.SetEnabled(false);
-        countdown_.SetRemaining(-1);
+        countdown_.SetRemaining(CountdownWindow::kNoRemaining);
     }
 }
 
@@ -220,9 +220,17 @@ void App::FormatBootTime(wchar_t* buf, size_t bufCount) const
 
 void App::FormatRemaining(wchar_t* buf, size_t bufCount) const
 {
+    if (!bootFound_) {
+        wcsncpy(buf, str::kNoTime, bufCount);
+        buf[bufCount - 1] = L'\0';
+        return;
+    }
     long long rem = RemainingSeconds();
     if (rem < 0) {
-        wcsncpy(buf, str::kNoTime, bufCount);
+        // Overtime past the deadline: show as negative time.
+        rem = -rem;
+        swprintf(buf, bufCount, L"-%02lld:%02lld:%02lld", rem / 3600, (rem % 3600) / 60,
+                 rem % 60);
     } else {
         swprintf(buf, bufCount, L"%02lld:%02lld:%02lld", rem / 3600, (rem % 3600) / 60,
                  rem % 60);

@@ -18,9 +18,11 @@ constexpr int kTimeLeft = 150;
 
 constexpr COLORREF kColorWhite = RGB(255, 255, 255);
 constexpr COLORREF kColorYellow = RGB(255, 215, 0);
+constexpr COLORREF kColorRed = RGB(255, 0, 0);
 constexpr COLORREF kColorKey = RGB(0, 0, 0);
 
-// The last hour is shown as mm:ss instead of hh:mm.
+// mm:ss is used instead of hh:mm for the last hour before the deadline and
+// the first hour of overtime.
 constexpr long long kLastHourSeconds = 3600;
 
 // Locate the desktop host window our widget should live in.
@@ -257,15 +259,24 @@ LRESULT CountdownWindow::HandleMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp
 
         wchar_t buf[16];
         COLORREF color = kColorWhite;
-        if (remainingSeconds_ < 0) {
+        if (remainingSeconds_ == kNoRemaining) {
             wcsncpy(buf, str::kNoTime, 16);
             buf[15] = L'\0';
+        } else if (remainingSeconds_ < 0) {
+            // Overtime past the deadline: negative red time, -MM:SS within the
+            // first hour, -HH:MM beyond.
+            const long long s = -remainingSeconds_;
+            color = kColorRed;
+            if (s > kLastHourSeconds)
+                swprintf(buf, 16, L"-%02lld:%02lld", s / 3600, (s % 3600) / 60);
+            else
+                swprintf(buf, 16, L"-%02lld:%02lld", s / 60, s % 60);
         } else if (remainingSeconds_ > kLastHourSeconds) {
             const long long s = remainingSeconds_;
             swprintf(buf, 16, L"%02lld:%02lld", s / 3600, (s % 3600) / 60);
         } else {
-            const long long s = remainingSeconds_ > 0 ? remainingSeconds_ : 0;
-            swprintf(buf, 16, L"%02lld:%02lld", s / 60, s % 60);
+            swprintf(buf, 16, L"%02lld:%02lld", remainingSeconds_ / 60,
+                     remainingSeconds_ % 60);
             color = kColorYellow;
         }
 
