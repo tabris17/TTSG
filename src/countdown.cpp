@@ -38,6 +38,19 @@ bool IsLightColor(COLORREF c)
 // the first hour of overtime.
 constexpr long long kLastHourSeconds = 3600;
 
+// The drawn text (and its color) is a pure function of the remaining
+// seconds, and in the hh:mm ranges it changes only once per minute.
+// SetRemaining compares this key to skip repaints that would draw the
+// exact same frame.
+long long DisplayKey(long long seconds)
+{
+    if (seconds == CountdownWindow::kNoRemaining)
+        return seconds; // "--:--", never changes
+    if (seconds > kLastHourSeconds || seconds < -kLastHourSeconds)
+        return seconds / 60; // hh:mm: one distinct frame per minute
+    return seconds;          // mm:ss: one distinct frame per second
+}
+
 // Locate the desktop host window our widget should live in.
 // Classic layout: Progman directly contains SHELLDLL_DefView.
 // Modern layout (Win10/11 with wallpaper host): after nudging Progman with
@@ -246,6 +259,10 @@ void CountdownWindow::EnsureCreated()
 void CountdownWindow::SetRemaining(long long seconds)
 {
     remainingSeconds_ = seconds;
+    const long long key = DisplayKey(seconds);
+    if (key == displayKey_)
+        return; // display is unchanged; skip the redundant repaint
+    displayKey_ = key;
     if (hwnd_ && IsWindow(hwnd_))
         InvalidateRect(hwnd_, nullptr, FALSE);
 }

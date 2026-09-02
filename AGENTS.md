@@ -88,6 +88,7 @@ out/                    编译产物（ttsg.exe）
   - 无开机时间：显示 `--:--`（`kNoRemaining` 哨兵值）；
   - 剩余 > 1 小时：白色 `时:分`；≤ 1 小时：黄色 `分:秒`；
   - 超时（负值）：负数加班时间，1 小时内红色 `-分:秒`，超过 1 小时紫色 `-时:分`。
+  - 重绘门控：`SetRemaining()` 按剩余秒数计算"显示键"（`DisplayKey()`：时:分 段为分钟粒度，分:秒 段为秒粒度），键不变则跳过重绘。因此画面必须是 `remainingSeconds_` 的纯函数；若要新增不依赖剩余秒数的显示元素（如闪烁冒号、实时时钟），须将其纳入重绘判定，否则不会刷新。
 - **可选背景色**（`SetBackground()`，设置持久化于 `BackgroundEnabled`/`BackgroundColor`）：关闭时维持纯透明；启用时用所选颜色 `RoundRect` 绘制圆角背景板，圆角外仍为颜色键透明。文字颜色按背景亮度自适应（浅色背景：标题白→黑、黄色→深琥珀；红/紫不变）。颜色键一般为纯黑，若用户选纯黑背景则改用 `RGB(0,0,1)` 作颜色键（`EffectiveColorKey()`），此时需销毁重建窗口才能生效——`SetBackground()` 内部已处理。
 - 右键窗口 → 向主窗口发 `WM_APP_COUNT_CLOSED` 隐藏组件（可经托盘菜单恢复，显示意图持久化到 `ShowCountdown`）。
 - 定位在主显示器工作区右下角，与右缘/任务栏保留 10 逻辑像素间隙（`kLogicalGap`）；坐标需减去虚拟屏原点（`SM_XVIRTUALSCREEN/Y`），因为桌面宿主坐标系以虚拟屏左上为原点（`BottomRightPosition()` 统一计算，创建与重定位共用）。`WM_DISPLAYCHANGE`/`WM_SETTINGCHANGE` 时重新定位。

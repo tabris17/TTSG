@@ -64,5 +64,9 @@ private:
     bool bgEnabled_ = false;
     COLORREF bgColor_ = kDefaultBgColor;
     long long remainingSeconds_ = kNoRemaining;
+    // Cache of the display key (see DisplayKey in countdown.cpp): repaints
+    // are skipped while the hh:mm text stays the same minute to minute.
+    // LLONG_MAX never equals a real key, so the first update always paints.
+    long long displayKey_ = LLONG_MAX;
     int width_ = 0, height_ = 0;
 };
